@@ -103,7 +103,7 @@ $setstdv[ 14 ] = $seedstdv + 10;
 $setstdv[ 15 ] = $seedstdv + 10;
 
 
-print STDERR "Looking for differences in thresholds greater than $set dB for variants in $calls; outputting those which have fewer than 1000 similar profiles when permuted 20,000 times\n";
+print STDERR "Looking for differences in thresholds greater than $set dB for variants in $calls; outputting those which have fewer than $plt similar profiles when permuted $numperm times\n";
 
 #output text file header
 print "Coordinate\tVariant ID\tReference\tAlternate\tFilename\tPermutation counts\tGene name\n";
@@ -180,25 +180,26 @@ if ( $#names_N > 0 ) {
 #tracker
 my $chr="0";
 
-#hash for holding colours for graphs
+#hash for holding colours for graphs - the 11 non-grey/black colours are chosen to be distinguishable for different colour perceptions
 my %colours = (
-	"0_0" => "#000000", #black
-	"0_0_M" => "#808080", #grey
-	"0_0_F" => "#C0C0C0", #pale grey
-	"0_0_N" => "#555555", #dark grey
-	"0_1" => "#117733", #green
-	"0_1_M" => "#44aa99", #teal
-	"0_1_F" => "#999933", #olive
-	"0_1_N" => "#88ccee", #cyan
-	"v_1" => "#666633", #darker yellow
-	"v_1_M" => "#eecc66", #light yellow
-	"v_1_F" => "#ddcc77", #sand
-	"v_1_N" => "#997700", #dark yellow
-	"1_1" => "#332288", #indigo
-	"1_1_M" => "#882255", #wine
-	"1_1_F" => "#cc6677", #rose
-	"1_1_N" => "#aa4499" #purple
+	"0_0" => "#000049", #dark, dark blue
+	"0_0_M" => "#885011", #brown
+	"0_0_F" => "#033d0b", #dark green
+	"0_0_N" => "#000000", #black
+	"0_1" => "#5b75f6", #lilac
+	"0_1_M" => "#dd8000", #orange
+	"0_1_F" => "#30cc9d", #teal
+	"0_1_N" => "#332187", #purple
+	"v_1" => "#555555", #dark grey
+	"v_1_M" => "#b1b1b1", #grey
+	"v_1_F" => "#d6d6d6", #grey
+	"v_1_N" => "#313131", #dark grey
+	"1_1" => "#1cbfe3", #turquoise
+	"1_1_M" => "#cc6678", #rose
+	"1_1_F" => "#9ce361", #yellow-green
+	"1_1_N" => "#fcff00" #bright yellow
 );
+
 my %gtypes = (
 	"0_0" => "ref (all)",
 	"0_0_M" => "ref (male)",
@@ -249,7 +250,7 @@ my %points = (
 );
 
 #Order of plotting:
-my @ordering = ("0_v_M", "0_v_F", "v_1_M", "v_1_F", "0_0_M", "0_0_F", "0_1_M", "0_1_F", "1_1_M", "1_1_F", "0_v", "v_1", "0_0", "0_1", "1_1");
+my @ordering = ("0_v_M", "0_v_F", "v_1_M", "v_1_F", "0_v", "v_1", "0_0_M", "0_0_F", "0_0", "0_1_M", "0_1_F", "1_1_M", "1_1_F", "0_1", "1_1");
 
 #Read in data and add totals
 my $fhc = new FileHandle('<' . $calls );
@@ -492,7 +493,7 @@ while(<$fhc>) {
 					}
 				}
 				my @groupnms = split(/\t/, $groupnames);
-					
+
 				my $num = 1; #counter
 				my $index = 0;
 
@@ -532,13 +533,22 @@ while(<$fhc>) {
 								}
 							} else {                                      #else make the record
 								$grpnames{ $groupx } = $mname; 
-								$grpnames{ $groupn } = $mname; 
 								$p_indivthrs{ $groupx } = [ @thrsh ]; #put the thresholds in as a new array ref
 								$p_averages{ $groupx } = [ @thrsh ]; #get the averages array ready
 								$p_stdevs{ $groupx } = [ @thrsh ]; #also get the standard deviation aray ready
-								$p_indivthrs{ $groupn } = [ @thrsh ]; #put the thresholds in as a new array ref
-								$p_averages{ $groupn } = [ @thrsh ]; #get the averages array ready
-								$p_stdevs{ $groupn } = [ @thrsh ]; #also get the standard deviation array ready
+
+								if ( exists( $p_indivthrs{ $groupn } ) ) { #if the non-sex-specific record exists, add them, else make that too
+									$grpnames{ $groupn } = $grpnames{ $groupn }."\t".$mname;
+									my $bel;
+									for $bel ( 0 .. $#thrsh ) {
+										$p_indivthrs{ $groupn }[ $bel ] = $p_indivthrs{ $groupn }[ $bel ]."\t". $thrsh[ $bel ];
+									}
+								} else {
+									$grpnames{ $groupn } = $mname; 
+									$p_indivthrs{ $groupn } = [ @thrsh ]; #put the thresholds in as a new array ref
+									$p_averages{ $groupn } = [ @thrsh ]; #get the averages array ready
+									$p_stdevs{ $groupn } = [ @thrsh ]; #also get the standard deviation array ready
+								}
 							}
 						} elsif ( $num == $totals{ $groupx } ) { #if this is the last one for that group
 							if ( exists( $p_indivthrs{ $groupx } ) ) { #if there's already some data for this group, add this data (on both sex-specific and non-specific)
@@ -551,13 +561,22 @@ while(<$fhc>) {
 								}
 							} else {                                      #else make the record
 								$grpnames{ $groupx } = $mname; 
-								$grpnames{ $groupn } = $mname; 
 								$p_indivthrs{ $groupx } = [ @thrsh ]; #put the thresholds in as a new array ref
 								$p_averages{ $groupx } = [ @thrsh ]; #get the averages array ready
 								$p_stdevs{ $groupx } = [ @thrsh ]; #also get the standard deviation aray ready
-								$p_indivthrs{ $groupn } = [ @thrsh ]; #put the thresholds in as a new array ref
-								$p_averages{ $groupn } = [ @thrsh ]; #get the averages array ready
-								$p_stdevs{ $groupn } = [ @thrsh ]; #also get the standard deviation array ready
+
+								if ( exists( $p_indivthrs{ $groupn } ) ) { #if the non-sex-specific record exists, add them, else make that too
+									$grpnames{ $groupn } = $grpnames{ $groupn }."\t".$mname;
+									my $bon;
+									for $bon ( 0 .. $#thrsh ) {
+										$p_indivthrs{ $groupn }[ $bon ] = $p_indivthrs{ $groupn }[ $bon ]."\t". $thrsh[ $bon ];
+									}
+								} else {
+									$grpnames{ $groupn } = $mname; 
+									$p_indivthrs{ $groupn } = [ @thrsh ]; #put the thresholds in as a new array ref
+									$p_averages{ $groupn } = [ @thrsh ]; #get the averages array ready
+									$p_stdevs{ $groupn } = [ @thrsh ]; #also get the standard deviation array ready
+								}
 							}
 							#reset counters
 							$num = 0;
@@ -799,10 +818,19 @@ while(<$fhc>) {
 
 			#go through ordering array and pull out the existing groups in the desired order
 			my @order;
+			my @putlast; #array to hold "notable" groups so they are added last - ie, plotted on top
 			my $pod;
 			for $pod ( 0 .. $#ordering ) {
-				if ( exists( $averages{ $ordering[ $pod ] } ) ) { push(@order, $ordering[ $pod ]); }
+				if ( exists( $averages{ $ordering[ $pod ] } ) ) { #if the group has averages (ie it exists in this dataset)
+					if ( exists( $notables{ $ordering[ $pod ] } ) ) { #if it's one with thresholds which pass the criteria, save for plotting last
+						push(@putlast, $ordering[ $pod ]); 
+					} else {
+						push(@order, $ordering[ $pod ]); 
+					}
+				}
 			}
+			#now combine the arrays
+			@order = (@order, @putlast);
 			
 			my $ycoord = -10; #y coordinate for adding stars, goes up by 2 every time a group has stars added so they all should be visible
 
